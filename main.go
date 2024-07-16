@@ -3,6 +3,7 @@ package main
 import (
 	"atm/account"
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"sync"
@@ -28,7 +29,13 @@ func createAccount(w http.ResponseWriter, _ *http.Request) {
 }
 
 func deposit(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	idStr := vars["id"]
 	if idStr == "" {
 		http.Error(w, "Missing account ID", http.StatusBadRequest)
 		return
@@ -68,7 +75,13 @@ func deposit(w http.ResponseWriter, r *http.Request) {
 }
 
 func withdraw(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	idStr := vars["id"]
 	if idStr == "" {
 		http.Error(w, "Missing account ID", http.StatusBadRequest)
 		return
@@ -110,7 +123,13 @@ func withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBalance(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	vars := mux.Vars(r)
+	idStr := vars["id"]
 	if idStr == "" {
 		http.Error(w, "Missing account ID", http.StatusBadRequest)
 		return
@@ -139,12 +158,11 @@ func getBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/accounts", createAccount)
-	http.HandleFunc("/accounts/deposit", deposit)
-	http.HandleFunc("/accounts/withdraw", withdraw)
-	http.HandleFunc("/accounts/getbalance", getBalance)
-	err := http.ListenAndServe(":8081", nil)
-	if err != nil {
-		return
-	}
+	router := mux.NewRouter()
+	router.HandleFunc("/accounts/{id}/withdraw", withdraw).Methods("POST")
+	router.HandleFunc("/accounts/{id}/deposit", deposit).Methods("POST")
+	router.HandleFunc("/accounts/{id}/getbalance", getBalance).Methods("GET")
+	router.HandleFunc("/accounts", createAccount).Methods("POST")
+	http.Handle("/", router)
+	http.ListenAndServe(":8081", nil)
 }
